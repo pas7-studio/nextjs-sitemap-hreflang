@@ -80,13 +80,14 @@ function normalizeEntryUrl(
 }
 
 function normalizeLanguages(
-  languages: Record<string, string>,
+  languages: Record<string, string | undefined>,
   baseUrl: string | undefined,
   ensureAbsolute: boolean,
   trailingSlash: "preserve" | "always" | "never",
 ): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(languages)) {
+    if (!v) continue;
     const abs = ensureAbsolute ? resolveAbsoluteUrl(v, baseUrl ?? v) : v;
     out[k] = normalizeUrl(abs, trailingSlash);
   }

@@ -21,7 +21,10 @@ export function assertHreflang(
     const languages = entry.alternates?.languages;
     if (!languages) continue;
 
-    const pairs = Object.entries(languages);
+    const pairs = Object.entries(languages).filter(([, href]) => Boolean(href)) as Array<[
+      string,
+      string,
+    ]>;
 
     if (pairs.length === 0) {
       issues.push({

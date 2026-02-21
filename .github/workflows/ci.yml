@@ -16,6 +16,50 @@ jobs:
         node-version: [20, 22]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce changeset and README update policy
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          SRC_CHANGED=false
+          API_OR_FEATURE_CHANGED=false
+          README_CHANGED=false
+          CHANGESET_CHANGED=false
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if [[ "$file" == src/* || "$file" == test/* || "$file" == package.json ]]; then
+              SRC_CHANGED=true
+            fi
+            if [[ "$file" == src/* || "$file" == package.json ]]; then
+              API_OR_FEATURE_CHANGED=true
+            fi
+            if [[ "$file" == README.md ]]; then
+              README_CHANGED=true
+            fi
+            if [[ "$file" == .changeset/*.md ]]; then
+              CHANGESET_CHANGED=true
+            fi
+          done <<< "$CHANGED_FILES"
+
+          if [[ "$SRC_CHANGED" == "true" && "$CHANGESET_CHANGED" != "true" ]]; then
+            echo "ERROR: Source changes require a changeset file (.changeset/*.md)."
+            exit 1
+          fi
+
+          if [[ "$API_OR_FEATURE_CHANGED" == "true" && "$README_CHANGED" != "true" ]]; then
+            echo "ERROR: API/feature changes require README.md update."
+            exit 1
+          fi
 
       - uses: actions/setup-node@v4
         with:

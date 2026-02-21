@@ -5,6 +5,7 @@ export type {
   SitemapAlternates,
   SitemapEntry,
   SitemapEntryLike,
+  NextMetadataSitemapEntryCompatible,
   XDefaultStrategy,
   HreflangIssueCode,
   // Routing strategies

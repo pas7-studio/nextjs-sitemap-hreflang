@@ -8,19 +8,25 @@ export type ChangeFrequency =
   | "never";
 
 export type SitemapAlternates = {
-  languages?: Record<string, string>;
+  languages?: Record<string, string | undefined> | undefined;
 };
 
 export type SitemapEntryLike = {
   url: string;
-  lastModified?: string | Date;
-  changeFrequency?: ChangeFrequency;
-  priority?: number;
-  alternates?: SitemapAlternates;
-  images?: string[];
+  lastModified?: string | Date | undefined;
+  changeFrequency?: ChangeFrequency | undefined;
+  priority?: number | undefined;
+  alternates?: SitemapAlternates | undefined;
+  images?: string[] | undefined;
 };
 
 export type SitemapEntry = SitemapEntryLike;
+
+/**
+ * Compatibility alias for Next.js App Router MetadataRoute.Sitemap entries.
+ * Keeps alternates.languages permissive for optional values.
+ */
+export type NextMetadataSitemapEntryCompatible = SitemapEntryLike;
 
 export type XDefaultStrategy =
   | { type: "loc" }
@@ -108,6 +114,11 @@ export type RoutingSuffixLocaleOptions = {
 export type RoutingPAS7Options = {
   readonly defaultLocale: string;
   readonly locales: readonly string[];
+  /**
+   * @deprecated Use suffixPaths. Kept for backward compatibility.
+   */
   readonly hubPaths?: readonly string[];
+  readonly suffixPaths?: readonly string[];
+  readonly prefixPaths?: readonly string[];
   readonly detailPathPattern?: RegExp;
 };

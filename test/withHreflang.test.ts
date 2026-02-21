@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { MetadataRoute } from "next";
 import { withHreflang, withHreflangFromRouting } from "../src/lib/withHreflang.js";
 import {
   routingPrefixAsNeeded,
@@ -43,6 +44,29 @@ describe("withHreflang", () => {
     const first = out[0]!;
     const languages = first.alternates!.languages as Record<string, string>;
     expect(languages["en"]).toBe("https://example.com/blog");
+  });
+
+  it("works with MetadataRoute.Sitemap without casts and filters undefined languages", () => {
+    const entries: MetadataRoute.Sitemap = [
+      {
+        url: "https://example.com/blog",
+        alternates: {
+          languages: {
+            en: "https://example.com/blog",
+            uk: undefined,
+          },
+        },
+      },
+    ];
+
+    const result = withHreflang(entries, {
+      baseUrl: "https://example.com",
+      ensureXDefault: true,
+    });
+
+    expect(result[0]?.alternates?.languages?.en).toBe("https://example.com/blog");
+    expect(result[0]?.alternates?.languages?.uk).toBeUndefined();
+    expect(result[0]?.alternates?.languages?.["x-default"]).toBe("https://example.com/blog");
   });
 });
 
@@ -142,27 +166,28 @@ describe("routing strategies", () => {
       expect(result[0]?.alternates?.languages?.de).toBe("https://example.com/de");
     });
 
-    it("generates correct URLs for hub pages (suffix pattern)", () => {
+    it("supports suffix paths for hubs and static pages", () => {
       const strategy = routingPAS7({
         defaultLocale: "en",
         locales: ["en", "uk", "de"],
-        hubPaths: ["/blog", "/projects"],
+        suffixPaths: ["/blog", "/contact", "/about", "/privacy", "/terms"],
       });
 
-      const entries: SitemapEntryLike[] = [{ url: "https://example.com/blog" }];
+      const entries: SitemapEntryLike[] = [{ url: "https://example.com/contact" }];
       const result = withHreflangFromRouting(entries, strategy, {
         baseUrl: "https://example.com",
       });
 
-      expect(result[0]?.alternates?.languages?.en).toBe("https://example.com/blog");
-      expect(result[0]?.alternates?.languages?.uk).toBe("https://example.com/blog/uk");
-      expect(result[0]?.alternates?.languages?.de).toBe("https://example.com/blog/de");
+      expect(result[0]?.alternates?.languages?.en).toBe("https://example.com/contact");
+      expect(result[0]?.alternates?.languages?.uk).toBe("https://example.com/contact/uk");
+      expect(result[0]?.alternates?.languages?.de).toBe("https://example.com/contact/de");
     });
 
-    it("generates correct URLs for detail pages (segment pattern)", () => {
+    it("supports detail locale-segment with highest priority", () => {
       const strategy = routingPAS7({
         defaultLocale: "en",
         locales: ["en", "uk", "de"],
+        suffixPaths: ["/blog"],
       });
 
       const entries: SitemapEntryLike[] = [{ url: "https://example.com/blog/en/my-article" }];
@@ -173,6 +198,55 @@ describe("routing strategies", () => {
       expect(result[0]?.alternates?.languages?.en).toBe("https://example.com/blog/en/my-article");
       expect(result[0]?.alternates?.languages?.uk).toBe("https://example.com/blog/uk/my-article");
       expect(result[0]?.alternates?.languages?.de).toBe("https://example.com/blog/de/my-article");
+    });
+
+    it("supports prefix paths", () => {
+      const strategy = routingPAS7({
+        defaultLocale: "en",
+        locales: ["en", "uk", "de"],
+        prefixPaths: ["/about"],
+      });
+
+      const entries: SitemapEntryLike[] = [{ url: "https://example.com/about" }];
+      const result = withHreflangFromRouting(entries, strategy, {
+        baseUrl: "https://example.com",
+      });
+
+      expect(result[0]?.alternates?.languages?.en).toBe("https://example.com/about");
+      expect(result[0]?.alternates?.languages?.uk).toBe("https://example.com/uk/about");
+      expect(result[0]?.alternates?.languages?.de).toBe("https://example.com/de/about");
+    });
+
+    it("supports mixed mode: home + suffix + detail + prefix", () => {
+      const strategy = routingPAS7({
+        defaultLocale: "en",
+        locales: ["en", "uk", "de"],
+        suffixPaths: ["/blog", "/contact"],
+        prefixPaths: ["/about"],
+      });
+
+      const homeEntries: SitemapEntryLike[] = [{ url: "https://example.com/" }];
+      const suffixEntries: SitemapEntryLike[] = [{ url: "https://example.com/contact" }];
+      const detailEntries: SitemapEntryLike[] = [{ url: "https://example.com/blog/en/post-1" }];
+      const prefixEntries: SitemapEntryLike[] = [{ url: "https://example.com/about" }];
+
+      const home = withHreflangFromRouting(homeEntries, strategy, {
+        baseUrl: "https://example.com",
+      })[0];
+      const suffix = withHreflangFromRouting(suffixEntries, strategy, {
+        baseUrl: "https://example.com",
+      })[0];
+      const detail = withHreflangFromRouting(detailEntries, strategy, {
+        baseUrl: "https://example.com",
+      })[0];
+      const prefix = withHreflangFromRouting(prefixEntries, strategy, {
+        baseUrl: "https://example.com",
+      })[0];
+
+      expect(home?.alternates?.languages?.uk).toBe("https://example.com/uk");
+      expect(suffix?.alternates?.languages?.uk).toBe("https://example.com/contact/uk");
+      expect(detail?.alternates?.languages?.uk).toBe("https://example.com/blog/uk/post-1");
+      expect(prefix?.alternates?.languages?.uk).toBe("https://example.com/uk/about");
     });
   });
 });

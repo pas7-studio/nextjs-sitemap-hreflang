@@ -26,10 +26,8 @@ export function routingPrefixAsNeeded(
       const base = basePath || "";
 
       if (locale === defaultLocale) {
-        // Default locale - no prefix
         return `${base}${normalizedPath}`;
       }
-      // Other locales - add prefix
       return `${base}/${locale}${normalizedPath}`;
     },
   };
@@ -74,7 +72,6 @@ export function routingDomainBased(
     hrefFor: ({ pathname, locale }) => {
       const domain = localeToDomain[locale];
       if (!domain) {
-        // Fallback to default domain with prefix
         const defaultDomain = localeToDomain[defaultLocale] || "";
         const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
         return `${defaultDomain}/${locale}${normalizedPath}`;
@@ -101,7 +98,6 @@ export function routingSuffixLocale(
     canonicalLocale: defaultLocale,
     hrefFor: ({ pathname, locale }) => {
       const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-      // Remove trailing slash for consistent handling
       const path =
         normalizedPath.endsWith("/") && normalizedPath !== "/"
           ? normalizedPath.slice(0, -1)
@@ -109,10 +105,8 @@ export function routingSuffixLocale(
       const base = basePath || "";
 
       if (locale === defaultLocale) {
-        // Default locale - no suffix
         return `${base}${path}`;
       }
-      // Other locales - add suffix
       return `${base}${path}/${locale}`;
     },
   };
@@ -144,65 +138,111 @@ export function routingCustom(options: {
 
 /**
  * PAS7 custom routing strategy:
- * - Home: / (en), /uk, /de, /it, /hr
- * - Hubs: /blog (en), /blog/uk, /blog/de
- * - Details: /blog/en/<slug>, /blog/uk/<slug>
+ * - Home: / (en), /uk, /de
+ * - Suffix pages: /blog (en), /blog/uk
+ * - Detail pages: /blog/en/slug, /blog/uk/slug
+ * - Prefix pages: /about (en), /uk/about
  *
- * This is a hybrid routing scheme where:
- * - Home pages use prefix pattern for non-default locales
- * - Hub pages (listing pages) use suffix pattern for non-default locales
- * - Detail pages have locale as a segment after the section
+ * Priority: detailPathPattern > suffixPaths > prefixPaths > fallback.
  */
 export function routingPAS7(options: RoutingPAS7Options): RoutingStrategy {
   const {
     defaultLocale,
     locales,
     hubPaths = ["/blog", "/projects", "/services", "/cases"],
+    suffixPaths,
+    prefixPaths = [],
     detailPathPattern = /^\/(blog|projects|services|cases)\//,
   } = options;
+
+  const normalizedSuffixPaths = uniquePaths(suffixPaths ?? hubPaths);
+  const normalizedPrefixPaths = uniquePaths(prefixPaths);
+  const localeSet = new Set(locales);
 
   return {
     locales,
     canonicalLocale: defaultLocale,
     hrefFor: ({ pathname, locale }) => {
-      // Normalize pathname
-      const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+      const normalizedPath = normalizeInputPath(pathname);
 
-      // Home page
-      if (normalizedPath === "/" || normalizedPath === "") {
+      if (normalizedPath === "/") {
         if (locale === defaultLocale) return "/";
         return `/${locale}`;
       }
 
-      // Detail pages - locale is segment after section
-      // /blog/en/slug → /blog/uk/slug
       if (detailPathPattern.test(normalizedPath)) {
         const parts = normalizedPath.split("/").filter(Boolean);
-        if (parts.length >= 3) {
-          // parts[0] = section, parts[1] = locale, parts[2+] = slug
+        if (parts.length >= 3 && localeSet.has(parts[1] ?? "")) {
           const section = parts[0];
           const slug = parts.slice(2).join("/");
           return `/${section}/${locale}/${slug}`;
         }
       }
 
-      // Hub pages - locale as suffix
-      // /blog → /blog/uk
-      const matchingHub = hubPaths.find((hub) => {
-        const normalizedHub = hub.startsWith("/") ? hub : `/${hub}`;
-        return normalizedPath === normalizedHub || normalizedPath === `${normalizedHub}/`;
-      });
-      if (matchingHub) {
-        const normalizedHub = matchingHub.startsWith("/")
-          ? matchingHub.replace(/\/$/, "")
-          : `/${matchingHub.replace(/\/$/, "")}`;
-        if (locale === defaultLocale) return normalizedHub;
-        return `${normalizedHub}/${locale}`;
+      const suffixBase = findSuffixBasePath(normalizedPath, normalizedSuffixPaths, localeSet);
+      if (suffixBase) {
+        if (locale === defaultLocale) return suffixBase;
+        return `${suffixBase}/${locale}`;
       }
 
-      // Fallback: prefix-as-needed style
+      const prefixBase = findPrefixBasePath(normalizedPath, normalizedPrefixPaths, localeSet);
+      if (prefixBase) {
+        if (locale === defaultLocale) return prefixBase;
+        return `/${locale}${prefixBase}`;
+      }
+
       if (locale === defaultLocale) return normalizedPath;
       return `/${locale}${normalizedPath}`;
     },
   };
+}
+
+function normalizeInputPath(pathname: string): string {
+  const withLeadingSlash = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  if (withLeadingSlash.length > 1 && withLeadingSlash.endsWith("/")) {
+    return withLeadingSlash.slice(0, -1);
+  }
+  return withLeadingSlash;
+}
+
+function uniquePaths(paths: readonly string[]): string[] {
+  return [...new Set(paths.map(normalizeInputPath))];
+}
+
+function findSuffixBasePath(
+  pathname: string,
+  suffixPaths: readonly string[],
+  localeSet: ReadonlySet<string>,
+): string | null {
+  for (const suffixPath of suffixPaths) {
+    if (pathname === suffixPath) return suffixPath;
+
+    if (!pathname.startsWith(`${suffixPath}/`)) continue;
+    const rest = pathname.slice(`${suffixPath}/`.length);
+    if (!rest) continue;
+
+    const [maybeLocale, ...tail] = rest.split("/");
+    if (tail.length === 0 && localeSet.has(maybeLocale ?? "")) {
+      return suffixPath;
+    }
+  }
+  return null;
+}
+
+function findPrefixBasePath(
+  pathname: string,
+  prefixPaths: readonly string[],
+  localeSet: ReadonlySet<string>,
+): string | null {
+  for (const prefixPath of prefixPaths) {
+    if (pathname === prefixPath) return prefixPath;
+
+    const withoutLeadingSlash = pathname.replace(/^\/+/, "");
+    const [maybeLocale, ...tail] = withoutLeadingSlash.split("/");
+    if (!localeSet.has(maybeLocale ?? "")) continue;
+
+    const candidate = normalizeInputPath(tail.join("/"));
+    if (candidate === prefixPath) return prefixPath;
+  }
+  return null;
 }
