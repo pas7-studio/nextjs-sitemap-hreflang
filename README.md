@@ -1,13 +1,16 @@
 # nextjs-sitemap-hreflang
 
-Add and validate `hreflang` alternates + `x-default` for Next.js sitemaps (App Router / MetadataRoute) with a tiny library + CLI postbuild fixer.
+[![CI](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/ci.yml/badge.svg)](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/ci.yml)
+[![Release](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/release.yml/badge.svg)](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/release.yml)
+[![npm version](https://img.shields.io/npm/v/nextjs-sitemap-hreflang.svg)](https://www.npmjs.com/package/nextjs-sitemap-hreflang)
+[![npm downloads](https://img.shields.io/npm/dm/nextjs-sitemap-hreflang.svg)](https://www.npmjs.com/package/nextjs-sitemap-hreflang)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-**Features:**
-- 🔄 Routing-agnostic: works with any i18n setup (next-intl, next-i18next, custom)
-- 📦 Library for Next.js App Router sitemap (`app/sitemap.ts`)
-- 🛠️ CLI for postbuild processing (`inject` and `check` commands)
-- ✅ Comprehensive validation (duplicates, casing, origin policy)
-- 🎯 Multiple routing presets (prefix-as-needed, prefix-always, domain-based, suffix-locale)
+Routing-agnostic hreflang toolkit for Next.js sitemaps:
+- Build hreflang alternates for App Router `MetadataRoute.Sitemap`
+- Inject/fix hreflang directly in generated XML
+- Validate sitemap hreflang in CI
+- Support different i18n URL patterns and content pipelines (`.ts`, `.json`, `.md/.mdx`, CMS)
 
 ## Install
 
@@ -15,26 +18,30 @@ Add and validate `hreflang` alternates + `x-default` for Next.js sitemaps (App R
 npm i nextjs-sitemap-hreflang
 ```
 
+## Why this package
+
+`nextjs-sitemap-hreflang` is built for real production SEO workflows where teams have mixed routing and mixed content storage:
+- `next-intl`, `next-i18next`, custom i18n
+- static/generated content from TypeScript, JSON manifests, Markdown/MDX, or external CMS
+- need both library-time and postbuild XML-time safety
+
 ## Quick Start
 
-### Next.js App Router (app/sitemap.ts)
+### 1) App Router sitemap with routing strategy
 
-#### Option 1: With routing strategy (recommended)
-
-```typescript
+```ts
 import type { MetadataRoute } from "next";
 import { withHreflangFromRouting, routingPrefixAsNeeded } from "nextjs-sitemap-hreflang";
 
-// Define your routing strategy
 const routing = routingPrefixAsNeeded({
   defaultLocale: "en",
-  locales: ["en", "uk", "de", "it"],
+  locales: ["en", "uk", "de"],
 });
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+export default function sitemap(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [
-    { url: "https://example.com/blog", lastModified: new Date() },
-    { url: "https://example.com/about", lastModified: new Date() },
+    { url: "https://example.com/blog" },
+    { url: "https://example.com/about" },
   ];
 
   return withHreflangFromRouting(entries, routing, {
@@ -44,293 +51,125 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 }
 ```
 
-#### Option 2: Manual alternates
+### 2) Universal manifest helper (`.ts` / `.json` / `.md` compatible)
 
-```typescript
-import type { MetadataRoute } from "next";
-import { withHreflang } from "nextjs-sitemap-hreflang";
+If your pipeline already produces a manifest (`slug + locales + dates`), use:
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [
-    {
-      url: "https://example.com/blog",
-      alternates: {
-        languages: {
-          en: "https://example.com/blog",
-          uk: "https://example.com/blog/uk",
-          de: "https://example.com/blog/de",
-        },
-      },
-    },
-  ];
+```ts
+import { createSitemapEntriesFromManifest } from "nextjs-sitemap-hreflang";
 
-  return withHreflang(entries, {
-    ensureXDefault: true,
-    xDefaultStrategy: { type: "loc" },
-  });
-}
+const blogManifest = [
+  {
+    slug: "nestjs-request-context-als-2026",
+    locales: ["en", "uk", "de", "it", "hr"],
+    updatedAt: "2026-02-08",
+  },
+];
+
+const entries = createSitemapEntriesFromManifest(blogManifest, {
+  baseUrl: "https://pas7.com.ua",
+  sectionPath: "/blog",
+  defaultLocale: "en",
+  routeStyle: "locale-segment", // /blog/en/slug, /blog/uk/slug
+});
+```
+
+### 3) Postbuild XML fixer + validator
+
+```bash
+npx nextjs-sitemap-hreflang inject --in public/sitemap.xml --out public/sitemap.xml
+npx nextjs-sitemap-hreflang check --in public/sitemap.xml --fail-on-missing
 ```
 
 ## Routing Strategies
 
-### prefix-as-needed (next-intl compatible)
+Use built-in strategies or custom routing:
+- `routingPrefixAsNeeded`
+- `routingPrefixAlways`
+- `routingSuffixLocale`
+- `routingDomainBased`
+- `routingPAS7`
+- `routingCustom`
 
-Default locale has no prefix, others have `/locale` prefix:
+## New Universal Manifest API
 
-```typescript
-import { routingPrefixAsNeeded } from "nextjs-sitemap-hreflang";
+`createSitemapEntriesFromManifest(items, options)` converts locale-aware manifest records into hreflang-ready entries.
 
-const routing = routingPrefixAsNeeded({
+Supported route styles:
+- `prefix-as-needed`
+- `prefix-always`
+- `suffix-locale`
+- `locale-segment`
+
+You can fully override URL generation with `pathnameFor(...)`.
+
+### Example: custom hybrid URLs
+
+```ts
+const entries = createSitemapEntriesFromManifest(manifest, {
+  baseUrl: "https://example.com",
+  sectionPath: "/content",
   defaultLocale: "en",
-  locales: ["en", "uk", "de"],
-});
-// /about → en: /about, uk: /uk/about, de: /de/about
-```
-
-### prefix-always
-
-All locales have `/locale` prefix:
-
-```typescript
-import { routingPrefixAlways } from "nextjs-sitemap-hreflang";
-
-const routing = routingPrefixAlways({
-  defaultLocale: "en",
-  locales: ["en", "uk", "de"],
-});
-// /about → en: /en/about, uk: /uk/about, de: /de/about
-```
-
-### suffix-locale
-
-Locale added as suffix (common for blogs):
-
-```typescript
-import { routingSuffixLocale } from "nextjs-sitemap-hreflang";
-
-const routing = routingSuffixLocale({
-  defaultLocale: "en",
-  locales: ["en", "uk", "de"],
-});
-// /blog → en: /blog, uk: /blog/uk, de: /blog/de
-```
-
-### domain-based
-
-Each locale has its own domain:
-
-```typescript
-import { routingDomainBased } from "nextjs-sitemap-hreflang";
-
-const routing = routingDomainBased({
-  defaultLocale: "en",
-  locales: ["en", "de", "uk"],
-  localeToDomain: {
-    en: "https://example.com",
-    de: "https://example.de",
-    uk: "https://example.ua",
-  },
-});
-// /about → en: example.com/about, de: example.de/about, uk: example.ua/about
-```
-
-### Custom routing
-
-```typescript
-import { routingCustom } from "nextjs-sitemap-hreflang";
-
-const routing = routingCustom({
-  locales: ["en", "uk"],
-  canonicalLocale: "en",
-  hrefFor: ({ pathname, locale }) => {
-    // Your custom logic
-    if (locale === "en") return pathname;
-    return `/uk${pathname}`;
-  },
+  pathnameFor: ({ slug, locale, defaultLocale }) =>
+    locale === defaultLocale ? `/articles/${slug}` : `/articles/${slug}.${locale}`,
 });
 ```
 
-### PAS7 routing (custom scheme)
+## CLI
 
-For PAS7-style routing with mixed prefix/suffix patterns:
+### `inject`
 
-```typescript
-import { routingPAS7 } from "nextjs-sitemap-hreflang";
-
-const routing = routingPAS7({
-  defaultLocale: "en",
-  locales: ["en", "uk", "de", "it", "hr"],
-  hubPaths: ["/blog", "/projects", "/services", "/cases"],
-});
-// Home: / (en), /uk, /de
-// Hubs: /blog (en), /blog/uk, /blog/de
-// Details: /blog/en/slug, /blog/uk/slug
-```
-
-## CLI Usage
-
-### inject - Add x-default to sitemap
+Add `x-default`, normalize order, and ensure namespace in sitemap XML.
 
 ```bash
-# Basic usage
-npx nextjs-sitemap-hreflang inject --in public/sitemap.xml
-
-# With options
-npx nextjs-sitemap-hreflang inject --in public/sitemap.xml --out public/sitemap.xml \
+npx nextjs-sitemap-hreflang inject --in public/sitemap.xml \
   --x-default loc \
   --canonical-locale en \
   --order canonical-first \
   --trailing-slash never
 ```
 
-**Options:**
-- `--in <path>` - Input sitemap file (required)
-- `--out <path>` - Output file (default: same as input)
-- `--base-url <url>` - Base URL for resolving relative URLs
-- `--x-default <strategy>` - Strategy: `loc`, `root`, `locale:en`, `custom:/path`
-- `--canonical-locale <locale>` - Locale for canonical URL
-- `--order canonical-first|preserve` - Order of hreflang links
-- `--trailing-slash always|never|preserve` - URL normalization
-- `--no-ensure-namespace` - Skip xmlns:xhtml injection
+### `check`
 
-### check - Validate sitemap hreflang
+Validate hreflang in sitemap XML.
 
 ```bash
-# Basic validation
-npx nextjs-sitemap-hreflang check --in public/sitemap.xml
-
-# With all checks
 npx nextjs-sitemap-hreflang check --in public/sitemap.xml \
-  --check-duplicate-keys \
-  --check-duplicate-hrefs \
-  --check-hreflang-casing \
   --origin-policy same \
   --fail-on-missing
 ```
 
-**Options:**
-- `--in <path>` - Input sitemap file (required)
-- `--json` - Output as JSON
-- `--fail-on-missing` - Exit with code 1 on issues
-- `--check-duplicate-keys` - Check for duplicate hreflang keys
-- `--check-duplicate-hrefs` - Check for duplicate href values
-- `--check-hreflang-casing` - Validate hreflang format (en, pt-BR, x-default)
-- `--origin-policy same|allowlist|off` - Origin consistency check
-- `--allowed-origins <list>` - Comma-separated allowed origins
-
-## API Reference
-
-### withHreflang(entries, options)
-
-Adds x-default and normalizes hreflang entries.
-
-```typescript
-import { withHreflang } from "nextjs-sitemap-hreflang";
-
-const result = withHreflang(entries, {
-  baseUrl: "https://example.com",
-  ensureXDefault: true,
-  xDefaultStrategy: { type: "loc" },
-  ensureAbsolute: true,
-  trailingSlash: "preserve",
-});
-```
-
-### withHreflangFromRouting(entries, routing, options)
-
-Builds hreflang using routing strategy.
-
-```typescript
-import { withHreflangFromRouting, routingPrefixAsNeeded } from "nextjs-sitemap-hreflang";
-
-const routing = routingPrefixAsNeeded({
-  defaultLocale: "en",
-  locales: ["en", "uk", "de"],
-});
-
-const result = withHreflangFromRouting(entries, routing, {
-  baseUrl: "https://example.com",
-  ensureXDefault: true,
-});
-```
-
-### expandLocaleEntries(entries, options)
-
-Expands entries to separate URL blocks per locale.
-
-```typescript
-import { expandLocaleEntries } from "nextjs-sitemap-hreflang";
-
-const expanded = expandLocaleEntries(entries, {
-  mode: "expanded",
-  includeXDefault: true,
-});
-```
-
-### injectXDefaultIntoSitemapXml(xml, options)
-
-Injects x-default into XML string.
-
-```typescript
-import { injectXDefaultIntoSitemapXml } from "nextjs-sitemap-hreflang";
-
-const result = injectXDefaultIntoSitemapXml(xml, {
-  xDefaultStrategy: { type: "loc" },
-  canonicalLocale: "en",
-  order: "canonical-first",
-  trailingSlash: "never",
-});
-```
-
-### checkSitemapXmlHreflang(xml, options)
-
-Validates sitemap XML hreflang.
-
-```typescript
-import { checkSitemapXmlHreflang } from "nextjs-sitemap-hreflang";
-
-const report = checkSitemapXmlHreflang(xml, {
-  requireXDefaultWhenMultiple: true,
-  checkDuplicateKeys: true,
-  checkDuplicateHrefs: true,
-  checkHreflangCasing: true,
-  originPolicy: "same",
-});
-
-console.log(report.ok); // true/false
-console.log(report.issues); // array of issues
-```
-
-## x-default Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| `{ type: "loc" }` | Use the `<loc>` URL (default) |
-| `{ type: "root" }` | Use the site root `/` |
-| `{ type: "locale", locale: "en" }` | Use a specific locale's URL |
-| `{ type: "custom", url: "/path" }` | Use a custom path |
-| `{ type: "fn", resolve: (entry) => ... }` | Custom function |
-
 ## CI Integration
 
-Add to your CI pipeline:
-
 ```yaml
-# .github/workflows/ci.yml
 - name: Check sitemap hreflang
   run: npx nextjs-sitemap-hreflang check --in public/sitemap.xml --fail-on-missing
 ```
 
-## 🤝 Support
+## Release and npm Publish
 
-For support, please:
-- [Open an issue](https://github.com/pas7-studio/nextjs-sitemap-hreflang/issues)
-- [Contact us via PAS7](https://pas7.com.ua/contact)
+This repository uses Changesets + GitHub Actions:
 
-## 🏢 Maintained by
+1. Add a changeset when behavior/API changes:
 
-**PAS7** — [https://pas7.com.ua/](https://pas7.com.ua/)
+```bash
+npm run changeset
+```
 
-## 📄 License
+2. Merge to `main`.
+3. `release.yml` creates/updates a release PR.
+4. Merging release PR publishes to npm (requires `NPM_TOKEN` secret).
 
-MIT © PAS7 Studio
+## Project Roadmap
+
+See `docs/OPEN_SOURCE_VISION.md` for roadmap and architecture direction.
+
+## Maintained by PAS7 Studio
+
+- Website: https://pas7.com.ua/
+- Blog: https://pas7.com.ua/blog
+- Contact: https://pas7.com.ua/contact
+
+## License
+
+MIT, PAS7 Studio

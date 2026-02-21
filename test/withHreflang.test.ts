@@ -25,9 +25,7 @@ describe("withHreflang", () => {
 
     const out = withHreflang(entries, { ensureXDefault: true, xDefaultStrategy: { type: "loc" } });
     expect(out.length).toBe(1);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const first = out[0]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const languages = first.alternates!.languages as Record<string, string>;
     expect(languages["x-default"]).toBe("https://example.com/blog");
   });
@@ -42,9 +40,7 @@ describe("withHreflang", () => {
 
     const out = withHreflang(entries, { ensureSelf: true, canonicalLocale: "en" });
     expect(out.length).toBe(1);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const first = out[0]!;
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const languages = first.alternates!.languages as Record<string, string>;
     expect(languages["en"]).toBe("https://example.com/blog");
   });

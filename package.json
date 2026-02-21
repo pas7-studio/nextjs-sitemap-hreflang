@@ -1,10 +1,22 @@
 {
   "name": "nextjs-sitemap-hreflang",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Add and validate hreflang alternates + x-default for Next.js sitemaps (App Router / MetadataRoute) with a tiny library + CLI postbuild fixer.",
+  "homepage": "https://github.com/pas7-studio/nextjs-sitemap-hreflang#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pas7-studio/nextjs-sitemap-hreflang.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pas7-studio/nextjs-sitemap-hreflang/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "files": [
     "dist",
     "README.md",
@@ -26,6 +38,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsup",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm publish --provenance --access public",
     "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "keywords": [
@@ -47,6 +62,7 @@
     "next-i18next"
   ],
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
     "@eslint/js": "^9.0.0",
     "@types/node": "^20.0.0",
     "eslint": "^9.0.0",

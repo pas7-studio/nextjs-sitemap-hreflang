@@ -16,6 +16,12 @@ export type {
   RoutingPAS7Options,
 } from "./lib/types.js";
 
+export type {
+  ManifestRouteStyle,
+  LocalizedManifestItem,
+  CreateSitemapEntriesFromManifestOptions,
+} from "./lib/fromManifest.js";
+
 export {
   assertHreflangExport as assertHreflang,
   withHreflang,
@@ -36,6 +42,8 @@ export {
 
 export { expandLocaleEntries } from "./lib/expandLocales.js";
 export type { ExpandLocalesOptions } from "./lib/expandLocales.js";
+
+export { createSitemapEntriesFromManifest } from "./lib/fromManifest.js";
 
 export { injectXDefaultIntoSitemapXml } from "./xml/inject.js";
 export type { InjectOptions } from "./xml/inject.js";
