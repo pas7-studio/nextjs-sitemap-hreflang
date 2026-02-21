@@ -87,6 +87,13 @@ Auto-detect order when `--in` is not provided:
 2. `out/sitemap.xml`
 3. `sitemap.xml`
 
+Prefer explicit source when needed:
+
+```bash
+npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out
+npx nextjs-sitemap-hreflang inject --prefer public --out public/sitemap.xml
+```
+
 ## Next.js Full SEO Stack (App Router)
 
 `app/sitemap.ts`:
@@ -190,6 +197,7 @@ Routing priority inside `routingPAS7`:
 npx nextjs-sitemap-hreflang inject \
   --x-default loc \
   --canonical-locale en \
+  --prefer public \
   --order canonical-first \
   --trailing-slash never
 ```
@@ -198,6 +206,7 @@ npx nextjs-sitemap-hreflang inject \
 
 ```bash
 npx nextjs-sitemap-hreflang check \
+  --prefer out \
   --origin-policy same \
   --fail-on-missing
 ```

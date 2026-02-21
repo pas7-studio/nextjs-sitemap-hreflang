@@ -3,9 +3,12 @@ import path from "node:path";
 
 export type ResolveSitemapInputOptions = {
   inPath: string | null;
+  prefer?: AutoDetectPreference;
   cwd?: string;
   exists?: (absolutePath: string) => boolean;
 };
+
+export type AutoDetectPreference = "public" | "out" | "root";
 
 const DEFAULT_CANDIDATES = [
   path.join("public", "sitemap.xml"),
@@ -18,13 +21,34 @@ export function resolveSitemapInputPath(options: ResolveSitemapInputOptions): st
 
   const cwd = options.cwd ?? process.cwd();
   const exists = options.exists ?? fs.existsSync;
+  const candidates = orderedCandidates(options.prefer ?? "public");
 
-  for (const candidate of DEFAULT_CANDIDATES) {
+  for (const candidate of candidates) {
     const absolutePath = path.resolve(cwd, candidate);
     if (exists(absolutePath)) return absolutePath;
   }
 
   throw new Error(
-    `Missing --in and sitemap file not found. Tried: ${DEFAULT_CANDIDATES.join(", ")}`,
+    `Missing --in and sitemap file not found. Tried: ${candidates.join(", ")}`,
   );
+}
+
+function orderedCandidates(prefer: AutoDetectPreference): readonly string[] {
+  if (prefer === "out") {
+    return [
+      path.join("out", "sitemap.xml"),
+      path.join("public", "sitemap.xml"),
+      "sitemap.xml",
+    ];
+  }
+
+  if (prefer === "root") {
+    return [
+      "sitemap.xml",
+      path.join("public", "sitemap.xml"),
+      path.join("out", "sitemap.xml"),
+    ];
+  }
+
+  return DEFAULT_CANDIDATES;
 }

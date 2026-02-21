@@ -24,6 +24,12 @@ Then the CLI command below is enough (no explicit `--in`):
 npx nextjs-sitemap-hreflang check --fail-on-missing
 ```
 
+If you need deterministic priority in CI:
+
+```bash
+npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out
+```
+
 The CLI auto-detect order is:
 1. `public/sitemap.xml`
 2. `out/sitemap.xml`

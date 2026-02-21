@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { XDefaultStrategy } from "./lib/types.js";
+import type { AutoDetectPreference } from "./cli/resolveSitemapInputPath.js";
 import { resolveSitemapInputPath } from "./cli/resolveSitemapInputPath.js";
 import { injectXDefaultIntoSitemapXml } from "./xml/inject.js";
 import { checkSitemapXmlHreflang } from "./xml/check.js";
@@ -21,6 +22,7 @@ type Args = {
   ensureNamespace: boolean;
   json: boolean;
   failOnMissing: boolean;
+  prefer: AutoDetectPreference;
   // Inject options
   canonicalLocale: string | null;
   order: "canonical-first" | "preserve";
@@ -45,6 +47,7 @@ function parseArgs(argv: string[]): Args {
     ensureNamespace: true,
     json: false,
     failOnMissing: false,
+    prefer: "public",
     canonicalLocale: null,
     order: "preserve",
     trailingSlash: "preserve",
@@ -93,6 +96,13 @@ function parseArgs(argv: string[]): Args {
     }
     if (a === "--fail-on-missing") {
       args.failOnMissing = true;
+      continue;
+    }
+    if (a === "--prefer" && v) {
+      if (v === "public" || v === "out" || v === "root") {
+        args.prefer = v;
+      }
+      i += 1;
       continue;
     }
     if (a === "--canonical-locale" && v) {
@@ -164,12 +174,14 @@ function printHelp(): void {
     "  --x-default loc|root|locale:en|custom:https://example.com/path",
     "  --base-url https://example.com",
     "  --in is optional for inject/check (auto-detect: public/sitemap.xml, out/sitemap.xml, sitemap.xml)",
+    "  --prefer public|out|root      Change auto-detect priority (default: public)",
     "  --canonical-locale <locale>    Canonical locale for ordering",
     "  --order canonical-first|preserve",
     "  --trailing-slash preserve|always|never",
     "  --no-ensure-namespace",
     "",
     "Check options:",
+    "  --prefer public|out|root      Change auto-detect priority (default: public)",
     "  --no-check-duplicate-keys     Disable duplicate key check",
     "  --no-check-duplicate-hrefs    Disable duplicate href check",
     "  --no-check-hreflang-casing    Disable hreflang casing check",
@@ -221,7 +233,7 @@ async function main(): Promise<void> {
       }
       resolvedInPath = args.inPath;
     } else {
-      resolvedInPath = resolveSitemapInputPath({ inPath: args.inPath });
+      resolvedInPath = resolveSitemapInputPath({ inPath: args.inPath, prefer: args.prefer });
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to resolve sitemap input path";

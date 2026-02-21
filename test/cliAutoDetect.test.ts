@@ -24,6 +24,34 @@ describe("resolveSitemapInputPath", () => {
     expect(normalizePath(resolved)).toBe(`${normalizePath(cwd)}/public/sitemap.xml`);
   });
 
+  it("prefers out when --prefer out is used", () => {
+    const cwd = path.resolve("repo-root-prefer-out");
+    const resolved = resolveSitemapInputPath({
+      inPath: null,
+      prefer: "out",
+      cwd,
+      exists: (absolutePath) =>
+        normalizePath(absolutePath).endsWith("out/sitemap.xml") ||
+        normalizePath(absolutePath).endsWith("public/sitemap.xml"),
+    });
+
+    expect(normalizePath(resolved)).toBe(`${normalizePath(cwd)}/out/sitemap.xml`);
+  });
+
+  it("prefers root when --prefer root is used", () => {
+    const cwd = path.resolve("repo-root-prefer-root");
+    const resolved = resolveSitemapInputPath({
+      inPath: null,
+      prefer: "root",
+      cwd,
+      exists: (absolutePath) =>
+        normalizePath(absolutePath) === `${normalizePath(cwd)}/sitemap.xml` ||
+        normalizePath(absolutePath).endsWith("public/sitemap.xml"),
+    });
+
+    expect(normalizePath(resolved)).toBe(`${normalizePath(cwd)}/sitemap.xml`);
+  });
+
   it("falls back to out/sitemap.xml then sitemap.xml", () => {
     const cwd = path.resolve("repo-root-fallback");
     const fromOut = resolveSitemapInputPath({
