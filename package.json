@@ -1,6 +1,6 @@
 {
   "name": "@pas7/nextjs-sitemap-hreflang",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Add and validate hreflang alternates + x-default for Next.js sitemaps (App Router / MetadataRoute) with a tiny library + CLI postbuild fixer.",
   "homepage": "https://github.com/pas7-studio/nextjs-sitemap-hreflang#readme",
   "repository": {
