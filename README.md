@@ -1,7 +1,6 @@
 # nextjs-sitemap-hreflang
 
 [![CI](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/ci.yml/badge.svg)](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/ci.yml)
-[![Release](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/release.yml/badge.svg)](https://github.com/pas7-studio/nextjs-sitemap-hreflang/actions/workflows/release.yml)
 [![npm version](https://img.shields.io/npm/v/nextjs-sitemap-hreflang.svg)](https://www.npmjs.com/package/nextjs-sitemap-hreflang)
 [![npm downloads](https://img.shields.io/npm/dm/nextjs-sitemap-hreflang.svg)](https://www.npmjs.com/package/nextjs-sitemap-hreflang)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
