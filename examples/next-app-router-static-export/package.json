@@ -1,0 +1,16 @@
+{
+  "name": "next-app-router-static-export-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "hreflang:check": "npx nextjs-sitemap-hreflang check --fail-on-missing",
+    "seo:ci": "npm run build && npm run hreflang:check"
+  },
+  "dependencies": {
+    "@pas7/nextjs-sitemap-hreflang": "^0.5.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

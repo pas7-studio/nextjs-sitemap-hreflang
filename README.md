@@ -37,7 +37,7 @@ import { withHreflang } from "@pas7/nextjs-sitemap-hreflang";
 CLI binary stays the same:
 
 ```bash
-npx nextjs-sitemap-hreflang check --in public/sitemap.xml --fail-on-missing
+npx nextjs-sitemap-hreflang check --fail-on-missing
 ```
 
 ## Quick start: App Router
@@ -73,13 +73,69 @@ Use library generation + XML validation in CI:
 
 ```bash
 next build
-npx nextjs-sitemap-hreflang check --in public/sitemap.xml --fail-on-missing
+npx nextjs-sitemap-hreflang check --fail-on-missing
 ```
 
 Optional postbuild fix step:
 
 ```bash
-npx nextjs-sitemap-hreflang inject --in public/sitemap.xml --out public/sitemap.xml
+npx nextjs-sitemap-hreflang inject --out public/sitemap.xml
+```
+
+Auto-detect order when `--in` is not provided:
+1. `public/sitemap.xml`
+2. `out/sitemap.xml`
+3. `sitemap.xml`
+
+## Next.js Full SEO Stack (App Router)
+
+`app/sitemap.ts`:
+
+```ts
+import type { MetadataRoute } from "next";
+import { routingPAS7, withHreflangFromRouting } from "@pas7/nextjs-sitemap-hreflang";
+
+const baseUrl = "https://example.com";
+
+const routing = routingPAS7({
+  defaultLocale: "en",
+  locales: ["en", "uk", "de", "it", "hr"],
+  suffixPaths: ["/blog", "/projects", "/services", "/cases", "/contact", "/about", "/privacy", "/terms"],
+  detailPathPattern: /^\/(blog|projects|services|cases)\//,
+});
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return withHreflangFromRouting(
+    [
+      { url: `${baseUrl}/` },
+      { url: `${baseUrl}/blog` },
+      { url: `${baseUrl}/blog/en/hello-world` },
+      { url: `${baseUrl}/contact` },
+    ],
+    routing,
+    { baseUrl, ensureXDefault: true },
+  );
+}
+```
+
+`app/robots.ts`:
+
+```ts
+import type { MetadataRoute } from "next";
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: { userAgent: "*", allow: "/" },
+    sitemap: "https://example.com/sitemap.xml",
+  };
+}
+```
+
+CI script:
+
+```bash
+next build
+npx nextjs-sitemap-hreflang check --fail-on-missing
 ```
 
 ## Universal manifest helper (`.ts` / `.json` / `.md`)
@@ -114,6 +170,12 @@ const routing = routingPAS7({
 });
 ```
 
+Hybrid recipes:
+- Home pages: prefix-as-needed (`/`, `/uk`, `/de`)
+- Content hubs and static pages: suffix locale (`/blog/uk`, `/contact/uk`)
+- Detail pages: locale segment (`/blog/en/slug`, `/blog/uk/slug`)
+- Optional mixed prefix pages via `prefixPaths` (`/uk/about`)
+
 Routing priority inside `routingPAS7`:
 1. `detailPathPattern`
 2. `suffixPaths` (or legacy `hubPaths`)
@@ -125,7 +187,7 @@ Routing priority inside `routingPAS7`:
 ### inject
 
 ```bash
-npx nextjs-sitemap-hreflang inject --in public/sitemap.xml \
+npx nextjs-sitemap-hreflang inject \
   --x-default loc \
   --canonical-locale en \
   --order canonical-first \
@@ -135,7 +197,7 @@ npx nextjs-sitemap-hreflang inject --in public/sitemap.xml \
 ### check
 
 ```bash
-npx nextjs-sitemap-hreflang check --in public/sitemap.xml \
+npx nextjs-sitemap-hreflang check \
   --origin-policy same \
   --fail-on-missing
 ```

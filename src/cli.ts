@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { XDefaultStrategy } from "./lib/types.js";
+import { resolveSitemapInputPath } from "./cli/resolveSitemapInputPath.js";
 import { injectXDefaultIntoSitemapXml } from "./xml/inject.js";
 import { checkSitemapXmlHreflang } from "./xml/check.js";
 import {
@@ -155,13 +156,14 @@ function printHelp(): void {
     "nextjs-sitemap-hreflang",
     "",
     "Commands:",
-    "  inject --in <path> [--out <path>] [options]",
-    "  check  --in <path> [--json] [--fail-on-missing] [options]",
+    "  inject [--in <path>] [--out <path>] [options]",
+    "  check  [--in <path>] [--json] [--fail-on-missing] [options]",
     "  transform --in <path> --out <path> [options]",
     "",
     "Inject options:",
     "  --x-default loc|root|locale:en|custom:https://example.com/path",
     "  --base-url https://example.com",
+    "  --in is optional for inject/check (auto-detect: public/sitemap.xml, out/sitemap.xml, sitemap.xml)",
     "  --canonical-locale <locale>    Canonical locale for ordering",
     "  --order canonical-first|preserve",
     "  --trailing-slash preserve|always|never",
@@ -210,12 +212,24 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  if (!args.inPath) {
-    process.stderr.write("Missing --in\n");
+  let resolvedInPath: string;
+  try {
+    if (args.command === "transform") {
+      if (!args.inPath) {
+        process.stderr.write("Missing --in for transform\n");
+        process.exit(1);
+      }
+      resolvedInPath = args.inPath;
+    } else {
+      resolvedInPath = resolveSitemapInputPath({ inPath: args.inPath });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to resolve sitemap input path";
+    process.stderr.write(`${message}\n`);
     process.exit(1);
   }
 
-  const xml = readFileUtf8(args.inPath);
+  const xml = readFileUtf8(resolvedInPath);
 
   if (args.command === "inject") {
     const strategy = parseXDefaultStrategy(args.xDefault) ?? { type: "loc" };
@@ -229,7 +243,7 @@ async function main(): Promise<void> {
       trailingSlash: args.trailingSlash,
     });
 
-    const outPath = args.outPath ?? args.inPath;
+    const outPath = args.outPath ?? resolvedInPath;
     writeFileUtf8(outPath, next);
     process.stdout.write(`ok: injected\n`);
     return;
