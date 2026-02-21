@@ -1,5 +1,11 @@
 # @pas7/nextjs-sitemap-hreflang
 
+## 0.6.1
+
+### Patch Changes
+
+- 27cdde5: Add `--prefer <public|out|root>` CLI option to control sitemap auto-detect priority for `check` and `inject` while keeping backward-compatible default behavior.
+
 ## 0.6.0
 
 ### Minor Changes
