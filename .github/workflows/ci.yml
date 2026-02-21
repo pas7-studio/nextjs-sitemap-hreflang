@@ -5,6 +5,8 @@ on:
     branches: [ "main" ]
   pull_request:
 
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -36,11 +38,14 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+          registry-url: https://registry.npmjs.org
 
       - run: npm ci
       - run: npm run lint
@@ -48,13 +53,55 @@ jobs:
       - run: npm run test
       - run: npm run build
 
-      - name: Create Release PR or Publish
-        uses: changesets/action@v1
+      - name: Detect pending changesets
+        id: changesets
+        shell: bash
+        run: |
+          count=$(find .changeset -maxdepth 1 -type f -name '*.md' ! -name 'README.md' | wc -l | tr -d ' ')
+          if [ "$count" -gt 0 ]; then
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Version packages from changesets
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: npm run version-packages
+
+      - name: Commit and push version changes
+        if: steps.changesets.outputs.has_changesets == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(release): version packages [skip ci]"
+          git push origin HEAD:main
+
+      - name: Read package version
+        if: steps.changesets.outputs.has_changesets == 'true'
+        id: version
+        shell: bash
+        run: |
+          version=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create git tag
+        if: steps.changesets.outputs.has_changesets == 'true'
+        shell: bash
+        run: |
+          git tag "v${{ steps.version.outputs.value }}"
+          git push origin "v${{ steps.version.outputs.value }}"
+
+      - name: Create GitHub Release
+        if: steps.changesets.outputs.has_changesets == 'true'
+        uses: softprops/action-gh-release@v2
         with:
-          version: npm run version-packages
-          publish: npm run release
-          title: "chore(release): version packages"
-          commit: "chore(release): version packages"
+          tag_name: v${{ steps.version.outputs.value }}
+          generate_release_notes: true
+
+      - name: Publish to npm
+        if: steps.changesets.outputs.has_changesets == 'true'
+        run: npm run release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

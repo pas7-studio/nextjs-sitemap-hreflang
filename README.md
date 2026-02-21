@@ -147,7 +147,7 @@ npx nextjs-sitemap-hreflang check --in public/sitemap.xml \
 
 ## Release and npm Publish
 
-This repository uses Changesets + GitHub Actions:
+This repository uses a single CI workflow (`.github/workflows/ci.yml`) with a direct release flow:
 
 1. Add a changeset when behavior/API changes:
 
@@ -155,9 +155,14 @@ This repository uses Changesets + GitHub Actions:
 npm run changeset
 ```
 
-2. Merge to `main`.
-3. `release.yml` creates/updates a release PR.
-4. Merging release PR publishes to npm (requires `NPM_TOKEN` secret).
+2. Push/merge to `main`.
+3. Workflow runs `ci -> release`:
+   - applies `changeset version`
+   - commits version/changelog to `main`
+   - creates git tag + GitHub release
+   - publishes to npm
+
+Required secret: `NPM_TOKEN`.
 
 ## Project Roadmap
 
