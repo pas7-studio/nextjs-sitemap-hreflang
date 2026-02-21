@@ -4,6 +4,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
+  workflow_dispatch:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -79,29 +80,43 @@ jobs:
           git push origin HEAD:main
 
       - name: Read package version
-        if: steps.changesets.outputs.has_changesets == 'true'
         id: version
         shell: bash
         run: |
+          name=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).name")
           version=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Create git tag
-        if: steps.changesets.outputs.has_changesets == 'true'
+      - name: Check if npm version already exists
+        id: npm
         shell: bash
         run: |
+          if npm view "${{ steps.version.outputs.name }}@${{ steps.version.outputs.value }}" version >/dev/null 2>&1; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create git tag
+        if: steps.npm.outputs.should_publish == 'true'
+        shell: bash
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.value }}" >/dev/null 2>&1; then
+            exit 0
+          fi
           git tag "v${{ steps.version.outputs.value }}"
           git push origin "v${{ steps.version.outputs.value }}"
 
       - name: Create GitHub Release
-        if: steps.changesets.outputs.has_changesets == 'true'
+        if: steps.npm.outputs.should_publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.value }}
           generate_release_notes: true
 
       - name: Publish to npm
-        if: steps.changesets.outputs.has_changesets == 'true'
+        if: steps.npm.outputs.should_publish == 'true'
         run: npm run release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
