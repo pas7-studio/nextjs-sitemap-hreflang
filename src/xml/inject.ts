@@ -7,6 +7,8 @@ import {
   extractXhtmlLinks,
   hasXDefault,
   insertXhtmlLink,
+  normalizeTrailingSlashInBlock,
+  reorderXhtmlLinks,
   xmlEscape,
 } from "./xml.js";
 
@@ -14,11 +16,16 @@ export type InjectOptions = {
   baseUrl?: string;
   xDefaultStrategy?: XDefaultStrategy;
   ensureNamespace?: boolean;
+  canonicalLocale?: string;
+  order?: "canonical-first" | "preserve";
+  trailingSlash?: "preserve" | "always" | "never";
 };
 
 export function injectXDefaultIntoSitemapXml(xml: string, options: InjectOptions): string {
   const ensureNamespace = options.ensureNamespace ?? true;
   const xDefaultStrategy = options.xDefaultStrategy ?? { type: "loc" };
+  const order = options.order ?? "preserve";
+  const trailingSlash = options.trailingSlash ?? "preserve";
 
   const xmlWithNs = ensureNamespace ? ensureXhtmlNamespace(xml) : xml;
 
@@ -34,17 +41,33 @@ export function injectXDefaultIntoSitemapXml(xml: string, options: InjectOptions
     const links = extractXhtmlLinks(block);
     if (links.length === 0) continue;
 
-    if (hasXDefault(block)) continue;
+    let nextBlock = block;
 
-    const href = resolveXDefaultHref({
-      loc,
-      links,
-      ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
-      strategy: xDefaultStrategy,
-    });
+    if (!hasXDefault(block)) {
+      const href = resolveXDefaultHref({
+        loc,
+        links,
+        ...(options.baseUrl ? { baseUrl: options.baseUrl } : {}),
+        strategy: xDefaultStrategy,
+      });
 
-    const linkXml = `<xhtml:link rel="alternate" hreflang="x-default" href="${xmlEscape(href)}" />`;
-    const nextBlock = insertXhtmlLink(block, linkXml);
+      const linkXml = `<xhtml:link rel="alternate" hreflang="x-default" href="${xmlEscape(href)}" />`;
+      nextBlock = insertXhtmlLink(nextBlock, linkXml);
+    }
+
+    // Apply reordering if needed
+    if (order === "canonical-first") {
+      nextBlock = reorderXhtmlLinks(nextBlock, {
+        ...(options.canonicalLocale ? { canonicalLocale: options.canonicalLocale } : {}),
+        order: "canonical-first",
+      });
+    }
+
+    // Apply trailing slash normalization
+    if (trailingSlash !== "preserve") {
+      nextBlock = normalizeTrailingSlashInBlock(nextBlock, trailingSlash);
+    }
+
     out = out.replace(block, nextBlock);
   }
 

@@ -2,8 +2,9 @@ import type {
   HreflangReport,
   SitemapEntryLike,
   XDefaultStrategy,
+  RoutingStrategy,
 } from "./types.js";
-import { assertHreflang } from "./assertHreflang.js";
+import { assertHreflang as assertHreflangImpl } from "./assertHreflang.js";
 import { buildLanguagesMap, resolveXDefaultForLanguages } from "./buildLanguagesMap.js";
 import { normalizeUrl, resolveAbsoluteUrl } from "./url.js";
 
@@ -100,5 +101,72 @@ export type AssertHreflangOptions = {
 };
 
 export function assertHreflangExport(entries: readonly SitemapEntryLike[], options: AssertHreflangOptions): HreflangReport {
-  return assertHreflang(entries, options);
+  return assertHreflangImpl(entries, options);
+}
+
+/**
+ * Build hreflang entries using a routing strategy.
+ * This is the recommended way to use withHreflang with i18n routing.
+ */
+export function withHreflangFromRouting<T extends SitemapEntryLike>(
+  entries: readonly T[],
+  strategy: RoutingStrategy,
+  options: {
+    baseUrl: string;
+    trailingSlash?: "preserve" | "always" | "never";
+    ensureAbsolute?: boolean;
+    ensureXDefault?: boolean;
+    ensureSelf?: boolean;
+    shouldApply?: (entry: SitemapEntryLike) => boolean;
+  },
+): T[] {
+  const trailingSlash = options.trailingSlash ?? "preserve";
+  const ensureAbsolute = options.ensureAbsolute ?? true;
+  const ensureXDefault = options.ensureXDefault ?? true;
+  const ensureSelf = options.ensureSelf ?? false;
+
+  return entries.map((entry) => {
+    if (options.shouldApply && !options.shouldApply(entry)) return entry;
+
+    // Extract pathname from URL
+    let pathname: string;
+    try {
+      const url = new URL(entry.url, options.baseUrl);
+      pathname = url.pathname;
+    } catch {
+      pathname = entry.url;
+    }
+
+    // Build languages map from routing strategy
+    const languages: Record<string, string> = {};
+    for (const locale of strategy.locales) {
+      const href = strategy.hrefFor({ pathname, locale });
+      const abs = ensureAbsolute ? resolveAbsoluteUrl(href, options.baseUrl) : href;
+      languages[locale] = normalizeUrl(abs, trailingSlash);
+    }
+
+    // Add x-default if needed
+    if (ensureXDefault && !languages["x-default"]) {
+      const canonical =
+        languages[strategy.canonicalLocale] ?? normalizeUrl(entry.url, trailingSlash);
+      const xDefault = resolveXDefaultForLanguages({
+        canonical,
+        languages,
+        baseUrl: options.baseUrl,
+        strategy: strategy.xDefault ?? { type: "loc" },
+        trailingSlash,
+      });
+      languages["x-default"] = xDefault;
+    }
+
+    // Ensure self for canonical locale
+    if (ensureSelf && !languages[strategy.canonicalLocale]) {
+      const url = normalizeEntryUrl(entry.url, options.baseUrl, ensureAbsolute, trailingSlash);
+      languages[strategy.canonicalLocale] = url;
+    }
+
+    const alternates = { ...(entry.alternates ?? {}), languages };
+
+    return { ...entry, alternates } as T;
+  });
 }

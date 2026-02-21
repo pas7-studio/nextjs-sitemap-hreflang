@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://example.com/blog</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.com/blog" />
+    <xhtml:link rel="alternate" hreflang="uk" href="https://example.com/blog/uk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/blog" />
+  <lastmod>2026-02-01</lastmod>
+    <image:image>
+      <image:loc>https://example.com/images/blog-hero.jpg</image:loc>
+      <image:title>Blog Hero Image</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://example.com/blog/en/nextjs-sitemap-guide</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.com/blog/en/nextjs-sitemap-guide" />
+    <xhtml:link rel="alternate" hreflang="uk" href="https://example.com/blog/uk/nextjs-sitemap-guide" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/blog/en/nextjs-sitemap-guide" />
+  <lastmod>2026-02-15</lastmod>
+    <image:image>
+      <image:loc>https://example.com/images/nextjs-guide.jpg</image:loc>
+      <image:title>Next.js Sitemap Guide</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://example.com/images/nextjs-code.png</image:loc>
+      <image:title>Next.js Code Example</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://example.com/services</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.com/services" />
+    <xhtml:link rel="alternate" hreflang="uk" href="https://example.com/services/uk" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://example.com/services" />
+  <lastmod>2026-01-20</lastmod>
+  </url>
+</urlset>

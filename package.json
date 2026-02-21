@@ -1,6 +1,6 @@
 {
   "name": "nextjs-sitemap-hreflang",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Add and validate hreflang alternates + x-default for Next.js sitemaps (App Router / MetadataRoute) with a tiny library + CLI postbuild fixer.",
   "license": "MIT",
   "type": "module",
