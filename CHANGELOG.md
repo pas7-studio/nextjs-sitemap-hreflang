@@ -1,5 +1,11 @@
 # @pas7/nextjs-sitemap-hreflang
 
+## 0.7.0
+
+### Minor Changes
+
+- fa65452: Add CI-grade check UX: stable `--json` report (`ok`, `issues`, `summary.byCode`, `inputPath`, `timingMs`), human suggestions per issue code, deterministic auto-detect priority with `--prefer <public|out|root>`, and explicit exit codes (0/2/4/5).
+
 ## 0.6.1
 
 ### Patch Changes
