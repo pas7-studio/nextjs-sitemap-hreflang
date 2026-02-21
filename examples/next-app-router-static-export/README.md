@@ -30,6 +30,12 @@ If you need deterministic priority in CI:
 npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out
 ```
 
+If you need CI artifact report:
+
+```bash
+npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out --json > report.json
+```
+
 The CLI auto-detect order is:
 1. `public/sitemap.xml`
 2. `out/sitemap.xml`

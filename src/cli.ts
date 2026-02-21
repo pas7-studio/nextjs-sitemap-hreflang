@@ -3,6 +3,11 @@ import path from "node:path";
 
 import type { XDefaultStrategy } from "./lib/types.js";
 import type { AutoDetectPreference } from "./cli/resolveSitemapInputPath.js";
+import {
+  buildCliCheckJsonReport,
+  detectXmlInputError,
+  toCliIssues,
+} from "./cli/checkReport.js";
 import { resolveSitemapInputPath } from "./cli/resolveSitemapInputPath.js";
 import { injectXDefaultIntoSitemapXml } from "./xml/inject.js";
 import { checkSitemapXmlHreflang } from "./xml/check.js";
@@ -36,6 +41,8 @@ type Args = {
   // Transform options
   expandLocales: boolean;
 };
+
+type CliExitCode = 0 | 1 | 2 | 4 | 5;
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
@@ -217,6 +224,7 @@ function writeFileUtf8(p: string, content: string): void {
 }
 
 async function main(): Promise<void> {
+  const startedAt = Date.now();
   const args = parseArgs(process.argv.slice(2));
 
   if (!args.command) {
@@ -238,10 +246,15 @@ async function main(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to resolve sitemap input path";
     process.stderr.write(`${message}\n`);
-    process.exit(1);
+    process.exit(4 as CliExitCode);
   }
 
   const xml = readFileUtf8(resolvedInPath);
+  const xmlInputError = detectXmlInputError(xml);
+  if (xmlInputError) {
+    process.stderr.write(`${xmlInputError}\n`);
+    process.exit(5 as CliExitCode);
+  }
 
   if (args.command === "inject") {
     const strategy = parseXDefaultStrategy(args.xDefault) ?? { type: "loc" };
@@ -305,22 +318,30 @@ async function main(): Promise<void> {
     originPolicy: args.originPolicy,
     allowedOrigins: args.allowedOrigins,
   });
+  const issues = toCliIssues(report.issues);
+  const jsonReport = buildCliCheckJsonReport({
+    ok: report.ok,
+    issues,
+    inputPath: resolvedInPath,
+    timingMs: Date.now() - startedAt,
+  });
 
   if (args.json) {
-    process.stdout.write(JSON.stringify(report, null, 2));
+    process.stdout.write(JSON.stringify(jsonReport, null, 2));
     process.stdout.write("\n");
   } else {
     if (report.ok) {
       process.stdout.write("ok: sitemap hreflang check passed\n");
     } else {
-      process.stdout.write(`fail: ${report.issues.length} issue(s)\n`);
-      for (const issue of report.issues) {
+      process.stdout.write(`fail: ${issues.length} issue(s)\n`);
+      for (const issue of issues) {
         process.stdout.write(`- ${issue.code} ${issue.entryUrl}: ${issue.message}\n`);
+        process.stdout.write(`  hint: ${issue.suggestion}\n`);
       }
     }
   }
 
-  if (!report.ok && args.failOnMissing) process.exit(1);
+  if (!report.ok && args.failOnMissing) process.exit(2 as CliExitCode);
 }
 
 void main();

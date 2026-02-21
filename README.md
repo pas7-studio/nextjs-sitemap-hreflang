@@ -94,6 +94,12 @@ npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out
 npx nextjs-sitemap-hreflang inject --prefer public --out public/sitemap.xml
 ```
 
+Generate machine-readable CI report:
+
+```bash
+npx nextjs-sitemap-hreflang check --fail-on-missing --prefer out --json > report.json
+```
+
 ## Next.js Full SEO Stack (App Router)
 
 `app/sitemap.ts`:
@@ -210,6 +216,22 @@ npx nextjs-sitemap-hreflang check \
   --origin-policy same \
   --fail-on-missing
 ```
+
+### JSON report format
+
+`--json` output is stable and includes:
+- `ok`
+- `issues[]` (with `code`, `entryUrl`, `message`, `suggestion`)
+- `summary.byCode`
+- `inputPath`
+- `timingMs`
+
+### Exit codes
+
+- `0`: OK
+- `2`: validation errors (`--fail-on-missing`)
+- `4`: input not found
+- `5`: invalid XML input
 
 ## Release and npm publish
 
