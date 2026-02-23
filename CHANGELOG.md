@@ -1,5 +1,11 @@
 # @pas7/nextjs-sitemap-hreflang
 
+## 0.7.3
+
+### Patch Changes
+
+- 72f7aca: Add `imagesFor` to `createSitemapEntriesFromManifest` so nested content schemas can include multiple sitemap images per entry (for example hero + section screenshots) without pre-flattening to `item.images`.
+
 ## 0.7.0
 
 ### Minor Changes
