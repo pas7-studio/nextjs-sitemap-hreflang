@@ -166,6 +166,21 @@ const entries = createSitemapEntriesFromManifest(blogManifest, {
 });
 ```
 
+If your content keeps images in nested fields (for example `hero.cover` + section screenshots), pass `imagesFor` so the sitemap entry includes all image URLs:
+
+```ts
+const entries = createSitemapEntriesFromManifest(posts, {
+  baseUrl: "https://pas7.com.ua",
+  sectionPath: "/blog",
+  defaultLocale: "en",
+  routeStyle: "locale-segment",
+  imagesFor: (post) => [
+    post.hero.cover.src,
+    ...post.sections.flatMap((section) => section.screenshots?.map((s) => s.src) ?? []),
+  ],
+});
+```
+
 ## routingPAS7 with `suffixPaths` and `prefixPaths`
 
 ```ts

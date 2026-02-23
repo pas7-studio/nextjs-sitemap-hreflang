@@ -20,7 +20,7 @@ export type LocalizedManifestItem = {
   images?: string[];
 };
 
-export type CreateSitemapEntriesFromManifestOptions = {
+export type CreateSitemapEntriesFromManifestOptions<T extends LocalizedManifestItem = LocalizedManifestItem> = {
   baseUrl: string;
   sectionPath: string;
   defaultLocale: string;
@@ -37,11 +37,12 @@ export type CreateSitemapEntriesFromManifestOptions = {
     sectionPath: string;
     routeStyle: ManifestRouteStyle;
   }) => string;
+  imagesFor?: (item: T) => readonly string[] | undefined;
 };
 
 export function createSitemapEntriesFromManifest<T extends LocalizedManifestItem>(
   items: readonly T[],
-  options: CreateSitemapEntriesFromManifestOptions,
+  options: CreateSitemapEntriesFromManifestOptions<T>,
 ): SitemapEntry[] {
   const routeStyle = options.routeStyle ?? "locale-segment";
   const includeXDefault = options.ensureXDefault ?? true;
@@ -88,6 +89,7 @@ export function createSitemapEntriesFromManifest<T extends LocalizedManifestItem
       normalizeUrl(resolveAbsoluteUrl("/", options.baseUrl), trailingSlash);
 
     const lastModified = pickLastModified(item);
+    const images = pickImages(item, options);
 
     const baseEntry: SitemapEntry = {
       url: canonicalUrl,
@@ -95,7 +97,7 @@ export function createSitemapEntriesFromManifest<T extends LocalizedManifestItem
       ...(lastModified ? { lastModified } : {}),
       ...(item.changeFrequency ? { changeFrequency: item.changeFrequency } : {}),
       ...(typeof item.priority === "number" ? { priority: item.priority } : {}),
-      ...(item.images ? { images: [...item.images] } : {}),
+      ...(images ? { images } : {}),
     };
 
     const [entryWithHreflang] = withHreflang([baseEntry], {
@@ -166,4 +168,20 @@ function unique(values: readonly string[]): string[] {
 
 function pickLastModified(item: LocalizedManifestItem): string | Date | undefined {
   return item.lastModified ?? item.updatedAt ?? item.publishedAt ?? item.date;
+}
+
+function pickImages<T extends LocalizedManifestItem>(
+  item: T,
+  options: CreateSitemapEntriesFromManifestOptions<T>,
+): string[] | undefined {
+  const raw = options.imagesFor?.(item) ?? item.images;
+  if (!raw || raw.length === 0) return undefined;
+
+  const images = unique(
+    raw
+      .map((image) => image.trim())
+      .filter(Boolean),
+  );
+
+  return images.length > 0 ? images : undefined;
 }

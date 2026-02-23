@@ -63,4 +63,45 @@ describe("createSitemapEntriesFromManifest", () => {
       "https://example.com/articles/nestjs-request-context-als-2026.uk",
     );
   });
+
+  it("supports extracting multiple sitemap images from nested content objects", () => {
+    const richItems = [
+      {
+        slug: "nodejs-25-whats-new",
+        locales: ["en", "uk"],
+        updatedAt: "2026-02-22",
+        hero: {
+          cover: { src: "/images/blog/nodejs-25-whats-new/cover.webp" },
+        },
+        sections: [
+          {
+            screenshots: [
+              { src: "/images/blog/nodejs-25-whats-new/a.webp" },
+              { src: "/images/blog/nodejs-25-whats-new/b.webp" },
+            ],
+          },
+          {
+            screenshots: [{ src: "/images/blog/nodejs-25-whats-new/b.webp" }],
+          },
+        ],
+      },
+    ];
+
+    const result = createSitemapEntriesFromManifest(richItems, {
+      baseUrl: "https://pas7.com.ua",
+      sectionPath: "/blog",
+      defaultLocale: "en",
+      routeStyle: "locale-segment",
+      imagesFor: (item) => [
+        item.hero.cover.src,
+        ...item.sections.flatMap((section) => section.screenshots.map((shot) => shot.src)),
+      ],
+    });
+
+    expect(result[0]?.images).toEqual([
+      "/images/blog/nodejs-25-whats-new/cover.webp",
+      "/images/blog/nodejs-25-whats-new/a.webp",
+      "/images/blog/nodejs-25-whats-new/b.webp",
+    ]);
+  });
 });
